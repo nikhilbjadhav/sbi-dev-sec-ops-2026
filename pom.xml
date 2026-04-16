@@ -37,7 +37,7 @@
         <!-- SonarQube configuration -->
         <sonar.organization>nikhilbjadhav</sonar.organization>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.projectKey>nikhilbjadhav_sbi-ems</sonar.projectKey>
+        <sonar.projectKey>sbi-dev-sec-ops-2026</sonar.projectKey>
         <sonar.projectName>SBI Employee Management System</sonar.projectName>
         <sonar.java.source>17</sonar.java.source>
         <sonar.exclusions>**/test/**,**/generated/**</sonar.exclusions>
