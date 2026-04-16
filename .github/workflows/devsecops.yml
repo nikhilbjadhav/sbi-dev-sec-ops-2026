@@ -48,19 +48,26 @@ jobs:
     - name: Build Docker image
       run: docker build -t sbi-ems:${{ github.sha }} .
 
-    # ── 6. Start app for DAST ────────────────────────────────────
+       # ── 6. Start app for DAST ────────────────────────────────────
     - name: Start EMS container
       run: |
+        # Use --network host so ZAP can reach the app via localhost
         docker run -d --name ems-dast \
-          -p 8080:8080 \
+          --network host \
           -e JWT_SECRET=${{ secrets.JWT_SECRET_TEST }} \
           sbi-ems:${{ github.sha }}
 
         echo "Waiting for app to be ready..."
-        for i in $(seq 1 24); do
+        for i in $(seq 1 30); do
           if curl -sf http://localhost:8080/actuator/health > /dev/null; then
-            echo "App is ready"
+            echo "✅ App is ready"
             break
+          fi
+          echo "...waiting (attempt $i)"
+          if [ $i -eq 30 ]; then
+            echo "❌ App failed to start. Container logs:"
+            docker logs ems-dast
+            exit 1
           fi
           sleep 5
         done
@@ -68,7 +75,14 @@ jobs:
     # ── 7. DAST — OWASP ZAP ──────────────────────────────────────
     - name: DAST — OWASP ZAP
       run: |
-        docker run --network=host \
+        # Pre-create the file to avoid permission issues
+        touch zap-report.html
+        chmod 777 zap-report.html
+        
+        # Added -v $(pwd):/zap/wrk:rw to fix the mount error
+        # Added --user root to ensure write permissions
+        docker run --user root --network host \
+          -v $(pwd):/zap/wrk:rw \
           ghcr.io/zaproxy/zaproxy:stable \
           zap-api-scan.py \
             -t http://localhost:8080/v3/api-docs \
@@ -83,6 +97,7 @@ jobs:
       with:
         name: zap-report
         path: zap-report.html
+
 
     # ── 8. Cleanup ───────────────────────────────────────────────
     - name: Stop container
